@@ -1,0 +1,2109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Lenovo NC — Cycle Count Management</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;500;600;700&display=swap');
+
+  :root {
+    --bg: #f0f2f5;
+    --surface: #ffffff;
+    --surface2: #f5f6f8;
+    --surface3: #eaecf0;
+    --border: #dde1e8;
+    --border2: #c4cad6;
+    --text: #1a1f2e;
+    --text2: #4a5368;
+    --text3: #8a93a8;
+    --accent: #2563eb;
+    --accent2: #1d4ed8;
+    --green: #16a34a;
+    --yellow: #d97706;
+    --red: #dc2626;
+    --orange: #ea580c;
+    --purple: #7c3aed;
+    --cyan: #0891b2;
+    --a-color: #dc2626;
+    --b-color: #d97706;
+    --c-color: #16a34a;
+    --hvc-color: #7c3aed;
+    --pb-color: #0891b2;
+    --ah-color: #2563eb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 14px;
+    min-height: 100vh;
+  }
+
+  /* ── HEADER ── */
+  .header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 32px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    height: 60px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .header-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .header-logo {
+    width: 32px; height: 32px;
+    background: var(--accent);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600; font-size: 14px;
+  }
+  .header-title {
+    font-size: 15px; font-weight: 600;
+    letter-spacing: 0.02em;
+  }
+  .header-sub {
+    font-size: 11px; color: var(--text3);
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase; letter-spacing: 0.08em;
+  }
+  .header-date {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px; color: var(--text2);
+  }
+
+  /* ── NAV ── */
+  .nav {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 2px;
+    padding: 0 32px;
+  }
+  .nav-tab {
+    padding: 10px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.15s;
+    white-space: nowrap;
+  }
+  .nav-tab:hover { color: var(--text); }
+  .nav-tab.active {
+    color: var(--accent);
+    border-bottom-color: var(--accent);
+  }
+
+  /* ── LAYOUT ── */
+  .main { padding: 28px 32px; max-width: 1600px; margin: 0 auto; }
+  .page { display: none; }
+  .page.active { display: block; }
+
+  /* ── CARDS ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text3);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .card-title .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--accent);
+  }
+
+  /* ── GRID ── */
+  .grid { display: grid; gap: 16px; }
+  .grid-4 { grid-template-columns: repeat(4, 1fr); }
+  .grid-3 { grid-template-columns: repeat(3, 1fr); }
+  .grid-2 { grid-template-columns: repeat(2, 1fr); }
+  .grid-auto { grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); }
+
+  /* ── STAT CARDS ── */
+  .stat-card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    position: relative;
+    overflow: hidden;
+  }
+  .stat-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+  }
+  .stat-card.blue::before { background: var(--accent); }
+  .stat-card.green::before { background: var(--green); }
+  .stat-card.yellow::before { background: var(--yellow); }
+  .stat-card.red::before { background: var(--red); }
+  .stat-card.purple::before { background: var(--purple); }
+  .stat-card.cyan::before { background: var(--cyan); }
+  .stat-card.orange::before { background: var(--orange); }
+
+  .stat-label {
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text3);
+    margin-bottom: 8px;
+  }
+  .stat-value {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 32px;
+    font-weight: 600;
+    line-height: 1;
+    margin-bottom: 6px;
+  }
+  .stat-sub {
+    font-size: 12px;
+    color: var(--text2);
+  }
+
+  /* ── PROGRESS BAR ── */
+  .progress-wrap { margin-top: 12px; }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11px;
+    color: var(--text2);
+    margin-bottom: 5px;
+  }
+  .progress-bar {
+    height: 4px;
+    background: var(--surface3);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.6s ease;
+  }
+
+  /* ── ABC BREAKDOWN ── */
+  .abc-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 0;
+    border-bottom: 1px solid var(--border);
+  }
+  .abc-row:last-child { border-bottom: none; }
+  .abc-badge {
+    width: 28px; height: 28px;
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600; font-size: 13px;
+    flex-shrink: 0;
+  }
+  .abc-badge.A { background: #fee2e2; color: var(--a-color); }
+  .abc-badge.B { background: #fef3c7; color: var(--b-color); }
+  .abc-badge.C { background: #dcfce7; color: var(--c-color); }
+  .abc-badge.HVC { background: #ede9fe; color: var(--hvc-color); font-size: 9px; }
+  .abc-badge.PB { background: #cffafe; color: var(--pb-color); font-size: 9px; }
+  .abc-badge.AH { background: #dbeafe; color: var(--ah-color); font-size: 9px; }
+
+  .abc-info { flex: 1; }
+  .abc-name { font-size: 13px; font-weight: 500; }
+  .abc-freq { font-size: 11px; color: var(--text3); }
+  .abc-counts {
+    text-align: right;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 13px;
+  }
+  .abc-pct { font-size: 11px; color: var(--text2); }
+
+  /* ── TABLE ── */
+  .table-wrap {
+    overflow-x: auto;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    background: var(--surface2);
+    padding: 10px 14px;
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text3);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+  }
+  thead th:hover { color: var(--text); }
+  thead th .sort-icon { margin-left: 4px; opacity: 0.4; }
+  thead th.sorted .sort-icon { opacity: 1; color: var(--accent); }
+  tbody tr {
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td {
+    padding: 10px 14px;
+    color: var(--text);
+    font-size: 13px;
+  }
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+
+  /* ── BADGES ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 600;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .badge-A { background: #fee2e2; color: var(--a-color); }
+  .badge-B { background: #fef3c7; color: var(--b-color); }
+  .badge-C { background: #dcfce7; color: var(--c-color); }
+  .badge-HVC { background: #ede9fe; color: var(--hvc-color); }
+  .badge-PB { background: #cffafe; color: var(--pb-color); }
+  .badge-AH { background: #dbeafe; color: var(--ah-color); }
+  .badge-counted { background: #dcfce7; color: var(--green); }
+  .badge-pending { background: #fef3c7; color: var(--yellow); }
+  .badge-overdue { background: #fee2e2; color: var(--red); }
+  .badge-na { background: var(--surface3); color: var(--text3); }
+
+  /* ── UPLOAD ZONE ── */
+  .upload-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+  .upload-zone {
+    border: 2px dashed var(--border2);
+    border-radius: 10px;
+    padding: 28px 20px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    background: var(--surface);
+    position: relative;
+  }
+  .upload-zone:hover, .upload-zone.dragover {
+    border-color: var(--accent);
+    background: #eff6ff;
+  }
+  .upload-zone.loaded {
+    border-color: var(--green);
+    border-style: solid;
+    background: #f0fdf4;
+  }
+  .upload-zone input[type=file] {
+    position: absolute; inset: 0; opacity: 0; cursor: pointer;
+  }
+  .upload-icon {
+    font-size: 32px;
+    margin-bottom: 10px;
+    display: block;
+  }
+  .upload-title {
+    font-size: 14px; font-weight: 600;
+    margin-bottom: 4px;
+  }
+  .upload-sub {
+    font-size: 12px; color: var(--text2);
+    margin-bottom: 8px;
+  }
+  .upload-status {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 4px 10px;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .upload-status.ok { background: rgba(34,197,94,0.15); color: var(--green); }
+  .upload-status.waiting { background: var(--surface3); color: var(--text3); }
+
+  /* ── SEARCH / FILTER BAR ── */
+  .filter-bar {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+  .search-input {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 14px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    flex: 1;
+    min-width: 200px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .search-input:focus { border-color: var(--accent); }
+  .search-input::placeholder { color: var(--text3); }
+
+  select.filter-select {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 7px;
+    padding: 8px 14px;
+    color: var(--text);
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    outline: none;
+    cursor: pointer;
+    appearance: none;
+    padding-right: 28px;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%235a6378' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 10px center;
+  }
+  select.filter-select:focus { border-color: var(--accent); }
+
+  .btn {
+    padding: 8px 16px;
+    border-radius: 7px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    border: none;
+    transition: all 0.15s;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: white;
+  }
+  .btn-primary:hover { background: var(--accent2); }
+  .btn-ghost {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--border2); color: var(--text); }
+  .btn-danger {
+    background: rgba(239,68,68,0.15);
+    border: 1px solid rgba(239,68,68,0.3);
+    color: var(--red);
+  }
+  .btn-danger:hover { background: rgba(239,68,68,0.25); }
+
+  /* ── SECTION HEADER ── */
+  .section-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 16px;
+    font-weight: 600;
+  }
+  .section-sub {
+    font-size: 12px;
+    color: var(--text2);
+    margin-top: 2px;
+  }
+
+  /* ── DIVIDER ── */
+  .divider { height: 1px; background: var(--border); margin: 24px 0; }
+
+  /* ── BIN SCOPE MANAGER ── */
+  .scope-manager {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .scope-manager-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .scope-manager-title {
+    font-size: 13px;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .scope-badge {
+    font-size: 11px;
+    font-family: 'IBM Plex Mono', monospace;
+    background: #dbeafe;
+    color: var(--accent);
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+  }
+  .scope-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .scope-search {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 5px 10px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 12px;
+    color: var(--text);
+    outline: none;
+    width: 200px;
+  }
+  .scope-search:focus { border-color: var(--accent); }
+  .scope-search::placeholder { color: var(--text3); }
+  .scope-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 0;
+    max-height: 320px;
+    overflow-y: auto;
+    padding: 12px 18px;
+  }
+  .scope-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.1s;
+    user-select: none;
+  }
+  .scope-item:hover { background: var(--surface2); }
+  .scope-item input[type=checkbox] {
+    width: 15px; height: 15px;
+    accent-color: var(--accent);
+    cursor: pointer;
+    flex-shrink: 0;
+  }
+  .scope-item-label {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 12px;
+    color: var(--text);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .scope-item.checked .scope-item-label { color: var(--accent); font-weight: 600; }
+  .scope-item-type {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 1px 5px;
+    border-radius: 3px;
+    flex-shrink: 0;
+  }
+  .scope-empty {
+    text-align: center;
+    padding: 32px;
+    color: var(--text3);
+    font-size: 13px;
+    grid-column: 1 / -1;
+  }
+
+  /* ── SCOPE TOGGLE ── */
+  .scope-toggle-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 10px;
+    border-radius: 7px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: all 0.15s;
+    white-space: nowrap;
+    user-select: none;
+  }
+  .scope-toggle-wrap:hover { border-color: var(--accent); }
+  .scope-toggle-wrap.active {
+    border-color: var(--accent);
+    background: #eff6ff;
+  }
+  .scope-toggle-switch {
+    width: 32px; height: 17px;
+    background: var(--border2);
+    border-radius: 9px;
+    position: relative;
+    transition: background 0.2s;
+    flex-shrink: 0;
+  }
+  .scope-toggle-switch::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 13px; height: 13px;
+    background: white;
+    border-radius: 50%;
+    transition: transform 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  }
+  .scope-toggle-wrap.active .scope-toggle-switch { background: var(--accent); }
+  .scope-toggle-wrap.active .scope-toggle-switch::after { transform: translateX(15px); }
+  .scope-toggle-label { font-size: 12px; font-weight: 500; color: var(--text2); }
+  .scope-toggle-wrap.active .scope-toggle-label { color: var(--accent); }
+
+  /* ── EMPTY STATE ── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text3);
+  }
+  .empty-icon { font-size: 40px; margin-bottom: 12px; }
+  .empty-title { font-size: 15px; font-weight: 500; color: var(--text2); margin-bottom: 6px; }
+  .empty-sub { font-size: 13px; }
+
+  /* ── ALERT ── */
+  .alert {
+    border-radius: 8px;
+    padding: 12px 16px;
+    font-size: 13px;
+    margin-bottom: 16px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+  .alert-warn { background: #fffbeb; border: 1px solid #fcd34d; color: #92400e; }
+  .alert-info { background: #eff6ff; border: 1px solid #bfdbfe; color: #1e40af; }
+  .alert-success { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+
+  /* ── PIE / DONUT VISUAL ── */
+  .donut-wrap { position: relative; width: 120px; height: 120px; }
+  .donut-wrap svg { width: 100%; height: 100%; transform: rotate(-90deg); }
+  .donut-center {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    align-items: center; justify-content: center;
+  }
+  .donut-pct {
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 22px; font-weight: 600;
+  }
+  .donut-lbl { font-size: 10px; color: var(--text3); }
+
+  /* ── TOOLTIP ── */
+  [data-tip] { position: relative; cursor: default; }
+  [data-tip]:hover::after {
+    content: attr(data-tip);
+    position: absolute;
+    bottom: calc(100% + 6px);
+    left: 50%; transform: translateX(-50%);
+    background: var(--surface3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-size: 11px;
+    padding: 5px 10px;
+    border-radius: 5px;
+    white-space: nowrap;
+    z-index: 200;
+    pointer-events: none;
+  }
+
+  /* ── OVERDUE ROW ── */
+  tr.overdue td:first-child {
+    border-left: 3px solid var(--red);
+  }
+  tr.overdue {
+    background: #fff5f5 !important;
+  }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1100px) {
+    .grid-4 { grid-template-columns: repeat(2, 1fr); }
+    .upload-grid { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 700px) {
+    .grid-4, .grid-3, .grid-2 { grid-template-columns: 1fr; }
+    .main { padding: 16px; }
+    .header, .nav { padding-left: 16px; padding-right: 16px; }
+  }
+
+  /* ── DETAIL PANEL ── */
+  .detail-panel {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 20px;
+    margin-top: 16px;
+    display: none;
+  }
+  .detail-panel.open { display: block; }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--surface2); }
+  ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--text3); }
+
+  .tag-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 6px; }
+  .tag {
+    font-size: 10px;
+    font-family: 'IBM Plex Mono', monospace;
+    padding: 2px 6px;
+    border-radius: 3px;
+    background: var(--surface3);
+    color: var(--text2);
+  }
+
+  .count-summary-row {
+    display: flex; align-items: center; gap: 16px;
+    padding: 12px 0; border-bottom: 1px solid var(--border);
+  }
+  .count-summary-row:last-child { border-bottom: none; }
+
+  .inline-badge {
+    padding: 1px 6px; border-radius: 3px;
+    font-size: 11px; font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="header-brand">
+    <div class="header-logo">CC</div>
+    <div>
+      <div class="header-title">Cycle Count Management</div>
+      <div class="header-sub">Lenovo / CEVA Logistics · Whitsett, NC</div>
+    </div>
+  </div>
+  <div class="header-date" id="headerDate"></div>
+</header>
+
+<!-- NAV -->
+<nav class="nav">
+  <div class="nav-tab active" data-page="dashboard">Dashboard</div>
+  <div class="nav-tab" data-page="upload">Upload Data</div>
+  <div class="nav-tab" data-page="inventory">Inventory & ABC</div>
+  <div class="nav-tab" data-page="counts">Count Schedule</div>
+  <div class="nav-tab" data-page="pid">PID Results</div>
+</nav>
+
+<!-- ══════════════════════════════════════════
+     PAGE: DASHBOARD
+══════════════════════════════════════════ -->
+<div class="main">
+<div class="page active" id="page-dashboard">
+
+  <div id="dash-no-data" class="alert alert-info">
+    <span>ℹ️</span>
+    <span>No data loaded yet. Go to <strong>Upload Data</strong> to import your Cost Sheet, Inventory, and Physical Inventory Documents.</span>
+  </div>
+
+  <!-- Dashboard scope bar -->
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px;">
+    <div>
+      <div style="font-size:18px;font-weight:700;color:var(--text);">Operations Overview</div>
+      <div style="font-size:12px;color:var(--text3);margin-top:2px;" id="dash-scope-sub">Showing all bins</div>
+    </div>
+    <div class="scope-toggle-wrap" id="dash-scope-toggle" onclick="toggleScopeFilter('dash')">
+      <div class="scope-toggle-switch"></div>
+      <span class="scope-toggle-label">In Scope Only</span>
+    </div>
+  </div>
+  <div class="grid grid-4" style="margin-bottom:16px;" id="dash-kpis">
+    <div class="stat-card blue">
+      <div class="stat-label">Total SKUs</div>
+      <div class="stat-value" id="kpi-total">—</div>
+      <div class="stat-sub">Active inventory items</div>
+    </div>
+    <div class="stat-card green">
+      <div class="stat-label">Counted This Period</div>
+      <div class="stat-value" id="kpi-counted">—</div>
+      <div class="progress-wrap">
+        <div class="progress-label">
+          <span>Progress</span><span id="kpi-counted-pct">—</span>
+        </div>
+        <div class="progress-bar"><div class="progress-fill" id="kpi-bar-counted" style="background:var(--green);width:0%"></div></div>
+      </div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">Remaining to Count</div>
+      <div class="stat-value" id="kpi-remaining">—</div>
+      <div class="stat-sub">Pending counts this period</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Overdue Counts</div>
+      <div class="stat-value" id="kpi-overdue">—</div>
+      <div class="stat-sub">Past scheduled due date</div>
+    </div>
+  </div>
+
+  <!-- Mid row -->
+  <div class="grid grid-2" style="margin-bottom:16px;">
+
+    <!-- ABC Breakdown -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Count Progress by Type</div>
+      <div id="abc-breakdown-list">
+        <div class="empty-state"><div class="empty-icon">📊</div><div class="empty-sub">Upload data to see breakdown</div></div>
+      </div>
+    </div>
+
+    <!-- Donut + Summary -->
+    <div class="card">
+      <div class="card-title"><span class="dot"></span>Overall Completion</div>
+      <div style="display:flex;align-items:center;gap:28px;">
+        <div class="donut-wrap">
+          <svg viewBox="0 0 36 36">
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--surface3)" stroke-width="3"/>
+            <circle cx="18" cy="18" r="15.9" fill="none" stroke="var(--green)" stroke-width="3"
+              stroke-dasharray="0 100" id="donut-fill" stroke-linecap="round"/>
+          </svg>
+          <div class="donut-center">
+            <div class="donut-pct" id="donut-pct">0%</div>
+            <div class="donut-lbl">complete</div>
+          </div>
+        </div>
+        <div style="flex:1;" id="donut-legend">
+          <div class="empty-state" style="padding:20px 0;"><div class="empty-sub">No data loaded</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Overdue / Urgent -->
+  <div class="card" id="dash-overdue-card">
+    <div class="card-title"><span class="dot" style="background:var(--red)"></span>Overdue & Urgent Counts</div>
+    <div id="dash-overdue-list">
+      <div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">Nothing overdue</div><div class="empty-sub">Upload data to track counts</div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: UPLOAD
+══════════════════════════════════════════ -->
+<div class="page" id="page-upload">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Upload Data Files</div>
+      <div class="section-sub">Import Cost Sheet, Inventory Snapshot, and Physical Inventory Documents (.xlsx)</div>
+    </div>
+    <button class="btn btn-danger" onclick="clearAllData()">🗑 Clear All Data</button>
+  </div>
+
+  <div class="upload-grid">
+    <!-- Cost Sheet -->
+    <div class="upload-zone" id="zone-cost" onclick="document.getElementById('file-cost').click()">
+      <input type="file" id="file-cost" accept=".xlsx,.xls,.csv" onchange="handleUpload('cost', this)">
+      <span class="upload-icon">💰</span>
+      <div class="upload-title">Cost Sheet</div>
+      <div class="upload-sub">Material numbers &amp; unit costs<br>Used for ABC classification</div>
+      <span class="upload-status waiting" id="status-cost">Awaiting file…</span>
+    </div>
+
+    <!-- Inventory -->
+    <div class="upload-zone" id="zone-inv" onclick="document.getElementById('file-inv').click()">
+      <input type="file" id="file-inv" accept=".xlsx,.xls,.csv" onchange="handleUpload('inventory', this)">
+      <span class="upload-icon">📦</span>
+      <div class="upload-title">Inventory Snapshot</div>
+      <div class="upload-sub">Current on-hand inventory<br>with storage bin / location data</div>
+      <span class="upload-status waiting" id="status-inv">Awaiting file…</span>
+    </div>
+
+    <!-- PID -->
+    <div class="upload-zone" id="zone-pid" onclick="document.getElementById('file-pid').click()">
+      <input type="file" id="file-pid" accept=".xlsx,.xls,.csv" onchange="handleUpload('pid', this)">
+      <span class="upload-icon">📋</span>
+      <div class="upload-title">Physical Inventory Docs</div>
+      <div class="upload-sub">Completed PI documents<br>from SAP EWM</div>
+      <span class="upload-status waiting" id="status-pid">Awaiting file…</span>
+    </div>
+  </div>
+
+  <!-- Bin Scope Manager -->
+  <div id="scope-section" style="display:none;">
+    <div class="divider"></div>
+    <div class="section-header">
+      <div>
+        <div class="section-title">Bin Scope Manager</div>
+        <div class="section-sub">Select which bins are your responsibility. Only in-scope bins count toward your KPIs when the scope filter is active.</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" onclick="scopeSelectAll()">☑ Select All</button>
+        <button class="btn btn-ghost" onclick="scopeDeselectAll()">☐ Deselect All</button>
+        <button class="btn btn-primary" onclick="saveScope()">💾 Save Scope</button>
+      </div>
+    </div>
+    <div class="scope-manager">
+      <div class="scope-manager-header">
+        <div class="scope-manager-title">
+          📍 Available Bins
+          <span class="scope-badge" id="scope-count-badge">0 selected</span>
+        </div>
+        <div class="scope-actions">
+          <input class="scope-search" id="scope-search" placeholder="🔍 Filter bins…" oninput="renderScopeGrid()">
+          <span style="font-size:12px;color:var(--text3);" id="scope-saved-label"></span>
+        </div>
+      </div>
+      <div class="scope-grid" id="scope-grid">
+        <div class="scope-empty">Upload inventory data to populate bins.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Column mapper -->
+  <div id="mapping-section" style="display:none;">
+    <div class="divider"></div>
+    <div class="section-header">
+      <div>
+        <div class="section-title">Column Mapping</div>
+        <div class="section-sub">Map your file columns to required fields. Auto-detected where possible.</div>
+      </div>
+      <button class="btn btn-primary" onclick="applyMappingAndProcess()">✓ Apply &amp; Process</button>
+    </div>
+    <div class="grid grid-3" id="mapping-grids"></div>
+  </div>
+
+  <!-- Data preview -->
+  <div id="preview-section" style="display:none;">
+    <div class="divider"></div>
+    <div class="section-header">
+      <div class="section-title">Data Preview</div>
+    </div>
+    <div class="grid grid-3" id="preview-panels"></div>
+  </div>
+
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: INVENTORY & ABC
+══════════════════════════════════════════ -->
+<div class="page" id="page-inventory">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Inventory & ABC Classification</div>
+      <div class="section-sub">All items classified by unit cost. B3-CAGE items are designated High-Value Cage.</div>
+    </div>
+    <button class="btn btn-ghost" onclick="exportInventoryCSV()">⬇ Export CSV</button>
+  </div>
+
+  <div class="filter-bar">
+    <input class="search-input" placeholder="🔍  Search by part number, description, or bin…" id="inv-search" oninput="filterInventory()">
+    <select class="filter-select" id="inv-abc" onchange="filterInventory()">
+      <option value="">All Types</option>
+      <option value="A">A Parts</option>
+      <option value="B">B Parts</option>
+      <option value="C">C Parts</option>
+      <option value="HVC">High Value Cage</option>
+      <option value="PB">Preventative Backlog</option>
+      <option value="AH">Ad Hoc</option>
+    </select>
+    <select class="filter-select" id="inv-bin" onchange="filterInventory()">
+      <option value="">All Bins</option>
+    </select>
+    <select class="filter-select" id="inv-status" onchange="filterInventory()">
+      <option value="">All Statuses</option>
+      <option value="counted">Counted</option>
+      <option value="pending">Pending</option>
+      <option value="overdue">Overdue</option>
+    </select>
+    <div class="scope-toggle-wrap" id="inv-scope-toggle" onclick="toggleScopeFilter('inv')">
+      <div class="scope-toggle-switch"></div>
+      <span class="scope-toggle-label">In Scope Only</span>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="inv-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('inv',0)">Part No. <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('inv',1)">Description <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('inv',2)">Bin / Location <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('inv',3)">Qty <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('inv',4)">Unit Cost <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('inv',5)">ABC <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('inv',6)">Frequency <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('inv',7)">Last Counted <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('inv',8)">Next Due <span class="sort-icon">↕</span></th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="inv-tbody">
+        <tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">No inventory loaded</div><div class="empty-sub">Upload files on the Upload Data tab</div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:12px;color:var(--text3);" id="inv-count-label"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: COUNT SCHEDULE
+══════════════════════════════════════════ -->
+<div class="page" id="page-counts">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Count Schedule</div>
+      <div class="section-sub">Upcoming and overdue counts by frequency type</div>
+    </div>
+    <div style="display:flex;gap:8px;">
+      <button class="btn btn-ghost" onclick="exportScheduleCSV()">⬇ Export Schedule</button>
+    </div>
+  </div>
+
+  <div class="grid grid-3" style="margin-bottom:20px;" id="schedule-kpis">
+    <div class="stat-card purple">
+      <div class="stat-label">Weekly (HVC)</div>
+      <div class="stat-value" id="sch-hvc">—</div>
+      <div class="stat-sub">B3CAGE items due this week</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Monthly (A Parts)</div>
+      <div class="stat-value" id="sch-a">—</div>
+      <div class="stat-sub">Due this month</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">Bi-Monthly (B Parts)</div>
+      <div class="stat-value" id="sch-b">—</div>
+      <div class="stat-sub">Due this cycle</div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <select class="filter-select" id="sch-type" onchange="filterSchedule()">
+      <option value="">All Types</option>
+      <option value="HVC">HVC — Weekly</option>
+      <option value="A">A — Monthly</option>
+      <option value="B">B — Bi-Monthly</option>
+      <option value="C">C — Quarterly</option>
+      <option value="PB">Preventative Backlog</option>
+      <option value="AH">Ad Hoc</option>
+    </select>
+    <select class="filter-select" id="sch-bin" onchange="filterSchedule()">
+      <option value="">All Bins</option>
+    </select>
+    <select class="filter-select" id="sch-status" onchange="filterSchedule()">
+      <option value="">All Statuses</option>
+      <option value="overdue">Overdue</option>
+      <option value="due-soon">Due Soon (7 days)</option>
+      <option value="pending">Upcoming</option>
+      <option value="counted">Counted</option>
+    </select>
+    <input class="search-input" placeholder="🔍  Search part number or bin…" id="sch-search" oninput="filterSchedule()" style="max-width:300px;">
+    <div class="scope-toggle-wrap" id="sch-scope-toggle" onclick="toggleScopeFilter('sch')">
+      <div class="scope-toggle-switch"></div>
+      <span class="scope-toggle-label">In Scope Only</span>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="sch-table">
+      <thead>
+        <tr>
+          <th onclick="sortTable('sch',0)">Part No. <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('sch',1)">Bin <span class="sort-icon">↕</span></th>
+          <th>Type</th>
+          <th onclick="sortTable('sch',3)">Frequency <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('sch',4)">Last Counted <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('sch',5)">Next Due <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('sch',6)">Days Until Due <span class="sort-icon">↕</span></th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="sch-tbody">
+        <tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">No schedule generated</div><div class="empty-sub">Upload inventory &amp; cost data to generate schedule</div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:12px;color:var(--text3);" id="sch-count-label"></div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PAGE: PID RESULTS
+══════════════════════════════════════════ -->
+<div class="page" id="page-pid">
+  <div class="section-header">
+    <div>
+      <div class="section-title">Physical Inventory Document Results</div>
+      <div class="section-sub">Completed PI counts matched against inventory. Variance &gt; 0 highlighted.</div>
+    </div>
+    <button class="btn btn-ghost" onclick="exportPIDCSV()">⬇ Export CSV</button>
+  </div>
+
+  <div class="grid grid-4" style="margin-bottom:16px;" id="pid-kpis">
+    <div class="stat-card green">
+      <div class="stat-label">Documents Loaded</div>
+      <div class="stat-value" id="pid-docs">—</div>
+      <div class="stat-sub">PI documents imported</div>
+    </div>
+    <div class="stat-card blue">
+      <div class="stat-label">Lines Counted</div>
+      <div class="stat-value" id="pid-lines">—</div>
+      <div class="stat-sub">COUN/RECO lines vs. total</div>
+    </div>
+    <div class="stat-card yellow">
+      <div class="stat-label">Variances Found</div>
+      <div class="stat-value" id="pid-var">—</div>
+      <div class="stat-sub">Book vs. physical mismatch</div>
+    </div>
+    <div class="stat-card red">
+      <div class="stat-label">Accuracy Rate</div>
+      <div class="stat-value" id="pid-acc">—</div>
+      <div class="stat-sub">Lines with zero variance</div>
+    </div>
+  </div>
+
+  <div class="filter-bar">
+    <input class="search-input" placeholder="🔍  Search part number or doc…" id="pid-search" oninput="filterPID()">
+    <select class="filter-select" id="pid-bin" onchange="filterPID()">
+      <option value="">All Bins</option>
+    </select>
+    <select class="filter-select" id="pid-pi-status" onchange="filterPID()">
+      <option value="">All PI Statuses</option>
+      <option value="COUN">COUN — Counted</option>
+      <option value="RECO">RECO — Recount</option>
+      <option value="ACTI">ACTI — Active</option>
+      <option value="DELE">DELE — Deleted</option>
+    </select>
+    <select class="filter-select" id="pid-var-filter" onchange="filterPID()">
+      <option value="">All Lines</option>
+      <option value="variance">Variance Only</option>
+      <option value="ok">Zero Variance</option>
+    </select>
+    <div class="scope-toggle-wrap" id="pid-scope-toggle" onclick="toggleScopeFilter('pid')">
+      <div class="scope-toggle-switch"></div>
+      <span class="scope-toggle-label">In Scope Only</span>
+    </div>
+  </div>
+
+  <div class="table-wrap">
+    <table id="pid-table">
+      <thead>
+        <tr>
+          <th>PI Doc</th>
+          <th onclick="sortTable('pid',1)">Part No. <span class="sort-icon">↕</span></th>
+          <th>Description</th>
+          <th>Bin</th>
+          <th>ABC</th>
+          <th>PI Status</th>
+          <th onclick="sortTable('pid',6)">Book Qty <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('pid',7)">Count Qty <span class="sort-icon">↕</span></th>
+          <th onclick="sortTable('pid',8)">Variance <span class="sort-icon">↕</span></th>
+          <th>Count Date</th>
+          <th>Result</th>
+        </tr>
+      </thead>
+      <tbody id="pid-tbody">
+        <tr><td colspan="11"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No PID data loaded</div><div class="empty-sub">Upload a Physical Inventory Document to see results</div></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <div style="margin-top:8px;font-size:12px;color:var(--text3);" id="pid-count-label"></div>
+</div>
+
+</div><!-- /main -->
+
+<script>
+// ═══════════════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════════════
+const state = {
+  costData: null,
+  inventoryData: null,
+  pidData: null,
+  processed: {
+    inventory: [],
+    schedule: [],
+    pid: []
+  },
+  colMaps: { cost: {}, inventory: {}, pid: {} },
+  rawHeaders: { cost: [], inventory: [], pid: [] },
+  rawRows: { cost: [], inventory: [], pid: [] },
+  sortState: {},
+  scopeBins: new Set(),        // bins the user has marked as in-scope
+  scopeActive: { inv: false, sch: false, pid: false, dash: false }  // per-tab toggle state
+};
+
+const TODAY = new Date();
+TODAY.setHours(0,0,0,0);
+
+// ═══════════════════════════════════════════════════════════
+//  BOOT
+// ═══════════════════════════════════════════════════════════
+document.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('headerDate').textContent = TODAY.toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
+
+  loadSavedScope();
+
+  // NAV
+  document.querySelectorAll('.nav-tab').forEach(t => {
+    t.addEventListener('click', () => {
+      document.querySelectorAll('.nav-tab').forEach(x => x.classList.remove('active'));
+      document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+      t.classList.add('active');
+      document.getElementById('page-' + t.dataset.page).classList.add('active');
+    });
+  });
+
+  // Drag-drop
+  ['cost','inv','pid'].forEach(id => {
+    const zoneId = id === 'pid' ? 'zone-pid' : id === 'inv' ? 'zone-inv' : 'zone-cost';
+    const zone = document.getElementById(zoneId);
+    zone.addEventListener('dragover', e => { e.preventDefault(); zone.classList.add('dragover'); });
+    zone.addEventListener('dragleave', () => zone.classList.remove('dragover'));
+    zone.addEventListener('drop', e => {
+      e.preventDefault(); zone.classList.remove('dragover');
+      const file = e.dataTransfer.files[0];
+      if (file) {
+        const key = id === 'inv' ? 'inventory' : id === 'pid' ? 'pid' : 'cost';
+        processFile(key, file);
+      }
+    });
+  });
+});
+
+// ═══════════════════════════════════════════════════════════
+//  FILE UPLOAD
+// ═══════════════════════════════════════════════════════════
+function handleUpload(key, input) {
+  const file = input.files[0];
+  if (!file) return;
+  processFile(key, file);
+}
+
+function processFile(key, file) {
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      let wb, ws, rows;
+      if (file.name.endsWith('.csv')) {
+        // parse CSV
+        const text = e.target.result;
+        rows = text.split('\n').map(r => r.split(',').map(c => c.trim().replace(/^"|"$/g,'')));
+      } else {
+        wb = XLSX.read(e.target.result, { type: 'array' });
+        ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '' });
+      }
+      // Remove empty rows
+      rows = rows.filter(r => r.some(c => c !== '' && c !== null && c !== undefined));
+      if (rows.length < 2) { alert('File appears empty or unreadable.'); return; }
+
+      const headers = rows[0].map(h => String(h).trim());
+      const dataRows = rows.slice(1).map(r => {
+        const obj = {};
+        headers.forEach((h, i) => obj[h] = r[i] !== undefined ? String(r[i]).trim() : '');
+        return obj;
+      });
+
+      state.rawHeaders[key] = headers;
+      state.rawRows[key] = dataRows;
+
+      // Auto-detect columns
+      autoDetectColumns(key, headers);
+
+      // Update UI
+      const zoneId = key === 'cost' ? 'zone-cost' : key === 'inventory' ? 'zone-inv' : 'zone-pid';
+      const statusId = key === 'cost' ? 'status-cost' : key === 'inventory' ? 'status-inv' : 'status-pid';
+      document.getElementById(zoneId).classList.add('loaded');
+      const st = document.getElementById(statusId);
+      st.className = 'upload-status ok';
+      st.textContent = `✓ ${dataRows.length} rows loaded`;
+
+      showMappingSection();
+      showPreviewSection(key, headers, dataRows);
+
+      // If all 3 loaded, auto-process
+      if (state.rawRows.cost.length && state.rawRows.inventory.length && state.rawRows.pid.length) {
+        autoProcess();
+      } else if (state.rawRows.cost.length && state.rawRows.inventory.length) {
+        autoProcess();
+      }
+    } catch(err) {
+      alert('Error parsing file: ' + err.message);
+      console.error(err);
+    }
+  };
+  if (file.name.endsWith('.csv')) reader.readAsText(file);
+  else reader.readAsArrayBuffer(file);
+}
+
+// ─── Column auto-detection ───
+const DETECT_RULES = {
+  cost: {
+    partNo: ['part','material','part no','partno','part number','material number','matnr','sku'],
+    unitCost: ['cost','unit cost','price','unit price','std cost','standard cost','value']
+  },
+  inventory: {
+    partNo: ['part','material','part no','partno','part number','material number','matnr','sku'],
+    description: ['description','desc','material desc','part desc','name'],
+    bin: ['bin','storage bin','location','storage location','whse bin','lgpla','bin location'],
+    qty: ['qty','quantity','on hand','stock qty','book qty','on-hand','quant','count qty','soh']
+  },
+  pid: {
+    piDoc: ['pi doc','pi document','physical inventory','pi#','pi number','document','doc','inv doc'],
+    piStatus: ['physical inventory status','pi status','status','inv status','pi stat'],
+    partNo: ['part','material','part no','partno','part number','material number','matnr','sku'],
+    description: ['description','desc','material desc'],
+    bin: ['bin','storage bin','location','storage location'],
+    bookQty: ['book qty','book','system qty','expected qty','on hand','soh','system','book quantity'],
+    countQty: ['count qty','counted','physical qty','actual qty','count','physical','counted qty'],
+    countDate: ['date','count date','counted date','pi date','posting date']
+  }
+};
+
+function autoDetectColumns(key, headers) {
+  const rules = DETECT_RULES[key];
+  const map = {};
+  const lowerHeaders = headers.map(h => h.toLowerCase());
+  for (const [field, keywords] of Object.entries(rules)) {
+    for (const kw of keywords) {
+      const idx = lowerHeaders.findIndex(h => h.includes(kw));
+      if (idx !== -1) { map[field] = headers[idx]; break; }
+    }
+    if (!map[field]) map[field] = ''; // undetected
+  }
+  state.colMaps[key] = map;
+}
+
+function showMappingSection() {
+  document.getElementById('mapping-section').style.display = 'block';
+  const grid = document.getElementById('mapping-grids');
+  grid.innerHTML = '';
+
+  const buildPanel = (key, title, fields) => {
+    if (!state.rawHeaders[key].length) return '';
+    const opts = ['', ...state.rawHeaders[key]].map(h => `<option value="${h}" ${state.colMaps[key][fields[0]?.id] === h ? '' : ''}>${h || '— skip —'}</option>`).join('');
+    const rows = fields.map(f => {
+      const sel = state.colMaps[key][f.id] || '';
+      const options = ['', ...state.rawHeaders[key]].map(h => `<option value="${h}" ${sel === h ? 'selected' : ''}>${h || '— skip —'}</option>`).join('');
+      return `<div style="margin-bottom:10px;">
+        <div style="font-size:11px;color:var(--text2);margin-bottom:4px;">${f.label} ${f.required ? '<span style="color:var(--red)">*</span>' : ''}</div>
+        <select class="filter-select" style="width:100%;" data-key="${key}" data-field="${f.id}" onchange="updateColMap(this)">
+          ${options}
+        </select>
+      </div>`;
+    }).join('');
+    return `<div class="card"><div class="card-title"><span class="dot"></span>${title}</div>${rows}</div>`;
+  };
+
+  grid.innerHTML =
+    buildPanel('cost', '💰 Cost Sheet', [
+      {id:'partNo', label:'Part Number', required:true},
+      {id:'unitCost', label:'Unit Cost', required:true}
+    ]) +
+    buildPanel('inventory', '📦 Inventory', [
+      {id:'partNo', label:'Part Number', required:true},
+      {id:'description', label:'Description', required:false},
+      {id:'bin', label:'Bin / Location', required:true},
+      {id:'qty', label:'Quantity', required:false}
+    ]) +
+    buildPanel('pid', '📋 PI Document', [
+      {id:'piDoc', label:'PI Document #', required:false},
+      {id:'piStatus', label:'PI Status (col B: ACTI/RECO/DELE/COUN)', required:false},
+      {id:'partNo', label:'Part Number', required:true},
+      {id:'description', label:'Description', required:false},
+      {id:'bin', label:'Bin', required:false},
+      {id:'bookQty', label:'Book Qty', required:false},
+      {id:'countQty', label:'Count Qty', required:false},
+      {id:'countDate', label:'Count Date', required:false}
+    ]);
+}
+
+function updateColMap(sel) {
+  state.colMaps[sel.dataset.key][sel.dataset.field] = sel.value;
+}
+
+function showPreviewSection(key, headers, rows) {
+  document.getElementById('preview-section').style.display = 'block';
+  // Show first 5 rows
+  const preview = rows.slice(0,5);
+  const cols = headers.slice(0, Math.min(headers.length, 6));
+  const tbody = preview.map(r => `<tr>${cols.map(c => `<td style="padding:6px 10px;font-size:12px;color:var(--text2);">${r[c] || ''}</td>`).join('')}</tr>`).join('');
+  const panelId = 'preview-' + key;
+  let panel = document.getElementById(panelId);
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = panelId;
+    panel.className = 'card';
+    document.getElementById('preview-panels').appendChild(panel);
+  }
+  const titles = {cost:'Cost Sheet Preview', inventory:'Inventory Preview', pid:'PID Preview'};
+  panel.innerHTML = `<div class="card-title"><span class="dot"></span>${titles[key]}</div>
+    <div style="overflow-x:auto;">
+    <table style="font-size:12px;width:100%;">
+      <thead><tr>${cols.map(c=>`<th style="padding:6px 10px;text-align:left;font-size:10px;color:var(--text3);font-weight:600;text-transform:uppercase;">${c}</th>`).join('')}</tr></thead>
+      <tbody>${tbody}</tbody>
+    </table></div>
+    <div style="font-size:11px;color:var(--text3);margin-top:8px;">Showing first 5 of ${rows.length} rows</div>`;
+}
+
+function applyMappingAndProcess() {
+  autoProcess();
+}
+
+function autoProcess() {
+  buildInventory();
+  buildSchedule();
+  buildPID();
+  updateDashboard();
+  document.getElementById('dash-no-data').style.display = 'none';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  ABC CLASSIFICATION
+// ═══════════════════════════════════════════════════════════
+function classifyABC(unitCost, bin) {
+  const cost = parseFloat(unitCost) || 0;
+  const binUpper = String(bin || '').toUpperCase();
+  if (binUpper.includes('B3-CAGE')) return 'HVC';
+  if (cost > 200) return 'A';
+  if (cost >= 50) return 'B';
+  return 'C';
+}
+
+function getFrequency(abc) {
+  switch(abc) {
+    case 'HVC': return 'Weekly';
+    case 'A':   return 'Monthly';
+    case 'B':   return 'Bi-Monthly';
+    case 'C':   return 'Quarterly';
+    case 'PB':  return 'Daily';
+    case 'AH':  return 'Ad Hoc';
+    default:    return 'Quarterly';
+  }
+}
+
+function getFrequencyDays(abc) {
+  switch(abc) {
+    case 'HVC': return 7;
+    case 'A':   return 30;
+    case 'B':   return 60;
+    case 'C':   return 90;
+    case 'PB':  return 1;
+    default:    return 90;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BUILD INVENTORY
+// ═══════════════════════════════════════════════════════════
+function buildInventory() {
+  const costMap = {};
+  if (state.rawRows.cost.length) {
+    const cm = state.colMaps.cost;
+    state.rawRows.cost.forEach(r => {
+      const pn = r[cm.partNo];
+      const cost = parseFloat((r[cm.unitCost] || '').replace(/[$,]/g,'')) || 0;
+      if (pn) costMap[pn.toUpperCase()] = cost;
+    });
+  }
+
+  if (!state.rawRows.inventory.length) return;
+  const im = state.colMaps.inventory;
+
+  // Build last counted map from PID — ONLY rows with status COUN or RECO
+  const lastCountedMap = {};
+  if (state.rawRows.pid.length) {
+    const pm = state.colMaps.pid;
+    state.rawRows.pid.forEach(r => {
+      const piStat = (r[pm.piStatus] || '').trim().toUpperCase();
+      // ACTI (active/not yet counted) and DELE (deleted) do NOT count
+      if (piStat === 'ACTI' || piStat === 'DELE') return;
+      // COUN = counted, RECO = recount (still a completed count) — both qualify
+      const pn = (r[pm.partNo] || '').toUpperCase();
+      const bin = (r[pm.bin] || '').toUpperCase();
+      const key = pn + '|' + bin;
+      const dateRaw = r[pm.countDate];
+      if (dateRaw) {
+        const d = parseDate(dateRaw);
+        if (d && (!lastCountedMap[key] || d > lastCountedMap[key])) lastCountedMap[key] = d;
+      }
+    });
+  }
+
+  state.processed.inventory = state.rawRows.inventory.map(r => {
+    const partNo = (r[im.partNo] || '').trim();
+    const bin = (r[im.bin] || '').trim();
+    const desc = (r[im.description] || '').trim();
+    const qty = parseFloat(r[im.qty]) || 0;
+    const unitCost = costMap[partNo.toUpperCase()] || 0;
+    const abc = classifyABC(unitCost, bin);
+    const freq = getFrequency(abc);
+    const freqDays = getFrequencyDays(abc);
+    const key = partNo.toUpperCase() + '|' + bin.toUpperCase();
+    const lastCounted = lastCountedMap[key] || null;
+    let nextDue = null;
+    if (lastCounted) {
+      nextDue = new Date(lastCounted);
+      nextDue.setDate(nextDue.getDate() + freqDays);
+    } else {
+      // Never counted — overdue as of today
+      nextDue = new Date(TODAY);
+      nextDue.setDate(nextDue.getDate() - 1);
+    }
+    let status = 'pending';
+    if (lastCounted) {
+      const daysSince = Math.floor((TODAY - lastCounted) / 86400000);
+      if (daysSince <= freqDays) status = 'counted';
+      else status = 'overdue';
+    } else {
+      status = 'overdue';
+    }
+    return { partNo, description: desc, bin, qty, unitCost, abc, freq, freqDays, lastCounted, nextDue, status };
+  }).filter(r => r.partNo);
+
+  renderInventoryTable(state.processed.inventory);
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BUILD SCHEDULE
+// ═══════════════════════════════════════════════════════════
+function buildSchedule() {
+  if (!state.processed.inventory.length) return;
+  state.processed.schedule = state.processed.inventory.map(r => {
+    const daysUntilDue = r.nextDue ? Math.ceil((r.nextDue - TODAY) / 86400000) : -999;
+    let schedStatus = 'pending';
+    if (r.status === 'counted') schedStatus = 'counted';
+    else if (daysUntilDue < 0) schedStatus = 'overdue';
+    else if (daysUntilDue <= 7) schedStatus = 'due-soon';
+    return { ...r, daysUntilDue, schedStatus };
+  });
+  renderScheduleTable(state.processed.schedule);
+  updateScheduleKPIs();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BUILD PID
+// ═══════════════════════════════════════════════════════════
+function buildPID() {
+  if (!state.rawRows.pid.length) return;
+  const pm = state.colMaps.pid;
+  const costMap = {};
+  state.processed.inventory.forEach(r => costMap[r.partNo.toUpperCase()] = { unitCost: r.unitCost, abc: r.abc, desc: r.description });
+
+  state.processed.pid = state.rawRows.pid.map(r => {
+    const piDoc = r[pm.piDoc] || '';
+    const piStatus = (r[pm.piStatus] || '').trim().toUpperCase();
+    const partNo = (r[pm.partNo] || '').trim();
+    const bin = (r[pm.bin] || '').trim();
+    const desc = (r[pm.description] || '').trim();
+    const bookQty = parseFloat(r[pm.bookQty]) || 0;
+    const countQty = parseFloat(r[pm.countQty]) || 0;
+    const variance = countQty - bookQty;
+    const countDateRaw = r[pm.countDate] || '';
+    const countDate = countDateRaw ? parseDate(countDateRaw) : null;
+    const meta = costMap[partNo.toUpperCase()] || {};
+    return { piDoc, piStatus, partNo, description: meta.desc || desc, bin, abc: meta.abc || '—', bookQty, countQty, variance, countDate, countDateRaw };
+  }).filter(r => r.partNo);
+
+  renderPIDTable(state.processed.pid);
+  updatePIDKPIs();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER: INVENTORY TABLE
+// ═══════════════════════════════════════════════════════════
+let invData = [];
+function renderInventoryTable(data) {
+  invData = data;
+  // Populate bin dropdown
+  const bins = [...new Set(data.map(r => r.bin).filter(Boolean))].sort();
+  const binSel = document.getElementById('inv-bin');
+  binSel.innerHTML = '<option value="">All Bins</option>' + bins.map(b => `<option value="${b}">${b}</option>`).join('');
+  // Populate scope manager
+  populateScopeManager(bins);
+  filterInventory();
+}
+
+function filterInventory() {
+  const search = document.getElementById('inv-search').value.toLowerCase();
+  const abc = document.getElementById('inv-abc').value;
+  const bin = document.getElementById('inv-bin').value;
+  const status = document.getElementById('inv-status').value;
+  let filtered = invData.filter(r => {
+    if (search && !`${r.partNo} ${r.description} ${r.bin}`.toLowerCase().includes(search)) return false;
+    if (abc && r.abc !== abc) return false;
+    if (bin && r.bin !== bin) return false;
+    if (status && r.status !== status) return false;
+    if (state.scopeActive.inv && state.scopeBins.size > 0 && !state.scopeBins.has(r.bin)) return false;
+    return true;
+  });
+  const tbody = document.getElementById('inv-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">🔍</div><div class="empty-sub">No items match your filters</div></div></td></tr>`;
+    document.getElementById('inv-count-label').textContent = '';
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => `
+    <tr class="${r.status === 'overdue' ? 'overdue' : ''}">
+      <td class="mono">${r.partNo}</td>
+      <td>${r.description || '—'}</td>
+      <td class="mono">${r.bin || '—'}</td>
+      <td class="mono">${r.qty}</td>
+      <td class="mono">$${r.unitCost.toFixed(2)}</td>
+      <td><span class="badge badge-${r.abc}">${r.abc}</span></td>
+      <td>${r.freq}</td>
+      <td class="mono">${r.lastCounted ? fmtDate(r.lastCounted) : '—'}</td>
+      <td class="mono">${r.nextDue ? fmtDate(r.nextDue) : '—'}</td>
+      <td><span class="badge badge-${r.status}">${capitalize(r.status)}</span></td>
+    </tr>`).join('');
+  document.getElementById('inv-count-label').textContent = `Showing ${filtered.length} of ${invData.length} items`;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER: SCHEDULE TABLE
+// ═══════════════════════════════════════════════════════════
+let schData = [];
+function renderScheduleTable(data) {
+  schData = data;
+  // Populate bin dropdown
+  const bins = [...new Set(data.map(r => r.bin).filter(Boolean))].sort();
+  const binSel = document.getElementById('sch-bin');
+  binSel.innerHTML = '<option value="">All Bins</option>' + bins.map(b => `<option value="${b}">${b}</option>`).join('');
+  filterSchedule();
+}
+
+function filterSchedule() {
+  const type = document.getElementById('sch-type').value;
+  const bin = document.getElementById('sch-bin').value;
+  const status = document.getElementById('sch-status').value;
+  const search = document.getElementById('sch-search').value.toLowerCase();
+  let filtered = schData.filter(r => {
+    if (type && r.abc !== type) return false;
+    if (bin && r.bin !== bin) return false;
+    if (status && r.schedStatus !== status) return false;
+    if (search && !`${r.partNo} ${r.bin}`.toLowerCase().includes(search)) return false;
+    if (state.scopeActive.sch && state.scopeBins.size > 0 && !state.scopeBins.has(r.bin)) return false;
+    return true;
+  });
+  // Sort: overdue first, then by daysUntilDue
+  filtered.sort((a,b) => a.daysUntilDue - b.daysUntilDue);
+
+  const tbody = document.getElementById('sch-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📅</div><div class="empty-sub">No items match your filters</div></div></td></tr>`;
+    document.getElementById('sch-count-label').textContent = '';
+    return;
+  }
+  tbody.innerHTML = filtered.map(r => {
+    const dLabel = r.daysUntilDue < 0 ? `<span style="color:var(--red)">${Math.abs(r.daysUntilDue)}d overdue</span>`
+      : r.daysUntilDue === 0 ? `<span style="color:var(--orange)">Today</span>`
+      : r.daysUntilDue <= 7 ? `<span style="color:var(--yellow)">${r.daysUntilDue}d</span>`
+      : `<span style="color:var(--text2)">${r.daysUntilDue}d</span>`;
+    return `<tr class="${r.schedStatus === 'overdue' ? 'overdue' : ''}">
+      <td class="mono">${r.partNo}</td>
+      <td class="mono">${r.bin || '—'}</td>
+      <td><span class="badge badge-${r.abc}">${r.abc}</span></td>
+      <td>${r.freq}</td>
+      <td class="mono">${r.lastCounted ? fmtDate(r.lastCounted) : '—'}</td>
+      <td class="mono">${r.nextDue ? fmtDate(r.nextDue) : '—'}</td>
+      <td>${dLabel}</td>
+      <td><span class="badge badge-${r.schedStatus}">${capitalize(r.schedStatus.replace('-',' '))}</span></td>
+    </tr>`;
+  }).join('');
+  document.getElementById('sch-count-label').textContent = `Showing ${filtered.length} of ${schData.length} items`;
+}
+
+function updateScheduleKPIs() {
+  if (!schData.length) return;
+  const hvc = schData.filter(r => r.abc === 'HVC' && (r.schedStatus === 'overdue' || r.schedStatus === 'due-soon')).length;
+  const a = schData.filter(r => r.abc === 'A' && (r.schedStatus === 'overdue' || r.schedStatus === 'due-soon')).length;
+  const b = schData.filter(r => r.abc === 'B' && (r.schedStatus === 'overdue' || r.schedStatus === 'due-soon')).length;
+  document.getElementById('sch-hvc').textContent = hvc;
+  document.getElementById('sch-a').textContent = a;
+  document.getElementById('sch-b').textContent = b;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  RENDER: PID TABLE
+// ═══════════════════════════════════════════════════════════
+let pidData = [];
+function renderPIDTable(data) {
+  pidData = data;
+  // Populate bin dropdown
+  const bins = [...new Set(data.map(r => r.bin).filter(Boolean))].sort();
+  const binSel = document.getElementById('pid-bin');
+  binSel.innerHTML = '<option value="">All Bins</option>' + bins.map(b => `<option value="${b}">${b}</option>`).join('');
+  filterPID();
+}
+
+function filterPID() {
+  const search = document.getElementById('pid-search').value.toLowerCase();
+  const bin = document.getElementById('pid-bin').value;
+  const piStatusFilter = document.getElementById('pid-pi-status').value;
+  const varFilter = document.getElementById('pid-var-filter').value;
+  let filtered = pidData.filter(r => {
+    if (search && !`${r.partNo} ${r.piDoc}`.toLowerCase().includes(search)) return false;
+    if (bin && r.bin !== bin) return false;
+    if (piStatusFilter && r.piStatus !== piStatusFilter) return false;
+    if (varFilter === 'variance' && r.variance === 0) return false;
+    if (varFilter === 'ok' && r.variance !== 0) return false;
+    if (state.scopeActive.pid && state.scopeBins.size > 0 && !state.scopeBins.has(r.bin)) return false;
+    return true;
+  });
+  const tbody = document.getElementById('pid-tbody');
+  if (!filtered.length) {
+    tbody.innerHTML = `<tr><td colspan="11"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-sub">No items match your filters</div></div></td></tr>`;
+    document.getElementById('pid-count-label').textContent = '';
+    return;
+  }
+
+  // PI Status badge styling
+  const piStatusBadge = s => {
+    const map = {
+      COUN: 'badge-counted',
+      RECO: 'badge-pending',
+      ACTI: 'badge-na',
+      DELE: 'badge-overdue'
+    };
+    const labels = { COUN:'Counted', RECO:'Recount', ACTI:'Active', DELE:'Deleted' };
+    const cls = map[s] || 'badge-na';
+    return `<span class="badge ${cls}">${labels[s] || s || '—'}</span>`;
+  };
+
+  tbody.innerHTML = filtered.map(r => {
+    const varClass = r.variance > 0 ? 'color:var(--yellow)' : r.variance < 0 ? 'color:var(--red)' : 'color:var(--green)';
+    const varSign = r.variance > 0 ? '+' : '';
+    // Variance cells only meaningful for COUN/RECO rows
+    const isCountable = r.piStatus === 'COUN' || r.piStatus === 'RECO' || r.piStatus === '';
+    return `<tr>
+      <td class="mono">${r.piDoc || '—'}</td>
+      <td class="mono">${r.partNo}</td>
+      <td>${r.description || '—'}</td>
+      <td class="mono">${r.bin || '—'}</td>
+      <td><span class="badge badge-${r.abc}">${r.abc}</span></td>
+      <td>${piStatusBadge(r.piStatus)}</td>
+      <td class="mono">${r.bookQty}</td>
+      <td class="mono">${isCountable ? r.countQty : '—'}</td>
+      <td class="mono" style="${isCountable ? varClass : ''}">${isCountable ? varSign + r.variance : '—'}</td>
+      <td class="mono">${r.countDate ? fmtDate(r.countDate) : r.countDateRaw || '—'}</td>
+      <td>${isCountable ? `<span class="badge ${r.variance === 0 ? 'badge-counted' : 'badge-overdue'}">${r.variance === 0 ? 'Match' : 'Variance'}</span>` : `<span class="badge badge-na">N/A</span>`}</td>
+    </tr>`;
+  }).join('');
+  document.getElementById('pid-count-label').textContent = `Showing ${filtered.length} of ${pidData.length} lines`;
+}
+
+function updatePIDKPIs() {
+  if (!state.processed.pid.length) return;
+  const docs = [...new Set(state.processed.pid.map(r => r.piDoc).filter(Boolean))].length;
+  const allLines = state.processed.pid.length;
+  // Only COUN and RECO rows are evaluated for accuracy
+  const countableLines = state.processed.pid.filter(r => r.piStatus === 'COUN' || r.piStatus === 'RECO' || r.piStatus === '');
+  const vars = countableLines.filter(r => r.variance !== 0).length;
+  const acc = countableLines.length ? ((countableLines.length - vars) / countableLines.length * 100).toFixed(1) + '%' : '—';
+  document.getElementById('pid-docs').textContent = docs;
+  document.getElementById('pid-lines').textContent = countableLines.length + ' / ' + allLines;
+  document.getElementById('pid-var').textContent = vars;
+  document.getElementById('pid-acc').textContent = acc;
+}
+
+// ═══════════════════════════════════════════════════════════
+//  DASHBOARD UPDATE
+// ═══════════════════════════════════════════════════════════
+function updateDashboard() {
+  const allInv = state.processed.inventory;
+  if (!allInv.length) return;
+
+  // Apply scope filter if dash scope is active
+  const inv = (state.scopeActive.dash && state.scopeBins.size > 0)
+    ? allInv.filter(r => state.scopeBins.has(r.bin))
+    : allInv;
+
+  // Update scope sub-label
+  const subEl = document.getElementById('dash-scope-sub');
+  if (subEl) {
+    if (state.scopeActive.dash && state.scopeBins.size > 0) {
+      subEl.textContent = `Showing ${state.scopeBins.size} in-scope bin${state.scopeBins.size !== 1 ? 's' : ''} · ${inv.length} of ${allInv.length} SKUs`;
+      subEl.style.color = 'var(--accent)';
+    } else {
+      subEl.textContent = `Showing all bins · ${allInv.length} SKUs`;
+      subEl.style.color = 'var(--text3)';
+    }
+  }
+
+  const total = inv.length;
+  const counted = inv.filter(r => r.status === 'counted').length;
+  const remaining = inv.filter(r => r.status !== 'counted').length;
+  const overdue = inv.filter(r => r.status === 'overdue').length;
+  const pct = total ? Math.round(counted / total * 100) : 0;
+
+  document.getElementById('kpi-total').textContent = total;
+  document.getElementById('kpi-counted').textContent = counted;
+  document.getElementById('kpi-remaining').textContent = remaining;
+  document.getElementById('kpi-overdue').textContent = overdue;
+  document.getElementById('kpi-counted-pct').textContent = pct + '%';
+  document.getElementById('kpi-bar-counted').style.width = pct + '%';
+
+  // Donut
+  const circ = 100;
+  const fill = (pct / 100) * circ;
+  document.getElementById('donut-fill').setAttribute('stroke-dasharray', `${fill} ${circ - fill}`);
+  document.getElementById('donut-pct').textContent = pct + '%';
+
+  // Legend
+  const types = ['HVC','A','B','C'];
+  const typeLabels = { HVC:'High Value Cage', A:'A Parts (Monthly)', B:'B Parts (Bi-Monthly)', C:'C Parts (Quarterly)' };
+  const typeColors = { HVC:'var(--hvc-color)', A:'var(--a-color)', B:'var(--b-color)', C:'var(--c-color)' };
+  const legend = types.map(t => {
+    const tItems = inv.filter(r => r.abc === t);
+    const tCounted = tItems.filter(r => r.status === 'counted').length;
+    return `<div class="count-summary-row">
+      <span class="badge badge-${t}">${t}</span>
+      <div style="flex:1;font-size:12px;color:var(--text2);">${typeLabels[t]}</div>
+      <span style="font-family:'IBM Plex Mono',monospace;font-size:13px;">${tCounted}/${tItems.length}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('donut-legend').innerHTML = legend;
+
+  // ABC Breakdown
+  const abcList = types.map(t => {
+    const tItems = inv.filter(r => r.abc === t);
+    const tCounted = tItems.filter(r => r.status === 'counted').length;
+    const tPct = tItems.length ? Math.round(tCounted/tItems.length*100) : 0;
+    const freq = getFrequency(t);
+    return `<div class="abc-row">
+      <div class="abc-badge ${t}">${t}</div>
+      <div class="abc-info">
+        <div class="abc-name">${typeLabels[t]}</div>
+        <div class="abc-freq">${freq} · ${t === 'A' ? '>$200' : t === 'B' ? '$50–$200' : t === 'C' ? '<$50' : 'B3-CAGE Location'}</div>
+        <div class="progress-bar" style="margin-top:5px;height:3px;">
+          <div class="progress-fill" style="background:${typeColors[t]};width:${tPct}%"></div>
+        </div>
+      </div>
+      <div class="abc-counts">
+        <div>${tCounted}/${tItems.length}</div>
+        <div class="abc-pct">${tPct}%</div>
+      </div>
+    </div>`;
+  }).join('') +
+  `<div class="abc-row">
+    <div class="abc-badge PB">PB</div>
+    <div class="abc-info"><div class="abc-name">Preventative Backlog</div><div class="abc-freq">Daily — as required</div></div>
+    <div class="abc-counts"><div class="abc-pct">—</div></div>
+  </div>
+  <div class="abc-row">
+    <div class="abc-badge AH">AH</div>
+    <div class="abc-info"><div class="abc-name">Ad Hoc</div><div class="abc-freq">By part number — as required</div></div>
+    <div class="abc-counts"><div class="abc-pct">—</div></div>
+  </div>`;
+  document.getElementById('abc-breakdown-list').innerHTML = abcList;
+
+  // Overdue list — scoped
+  const allOverdue = inv.filter(r => r.status === 'overdue');
+  const overdueItems = allOverdue.slice(0, 15);
+  if (overdueItems.length) {
+    document.getElementById('dash-overdue-list').innerHTML = `
+      <div class="table-wrap"><table>
+        <thead><tr>
+          <th>Part No.</th><th>Bin</th><th>Type</th><th>Frequency</th><th>Last Counted</th><th>Next Due</th>
+        </tr></thead>
+        <tbody>${overdueItems.map(r => `<tr>
+          <td class="mono">${r.partNo}</td>
+          <td class="mono">${r.bin||'—'}</td>
+          <td><span class="badge badge-${r.abc}">${r.abc}</span></td>
+          <td>${r.freq}</td>
+          <td class="mono" style="color:var(--red)">${r.lastCounted ? fmtDate(r.lastCounted) : 'Never'}</td>
+          <td class="mono" style="color:var(--red)">${r.nextDue ? fmtDate(r.nextDue) : '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>
+      ${allOverdue.length > 15 ? `<div style="font-size:12px;color:var(--text3);margin-top:8px;">Showing 15 of ${allOverdue.length} overdue items. View full list in Count Schedule.</div>` : ''}`;
+  } else if (inv.length) {
+    document.getElementById('dash-overdue-list').innerHTML = `<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">No overdue counts!</div><div class="empty-sub">All items are within their count frequency window.</div></div>`;
+  }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SORT
+// ═══════════════════════════════════════════════════════════
+function sortTable(tableKey, colIdx) {
+  const key = tableKey + colIdx;
+  const asc = state.sortState[key] !== true;
+  state.sortState[key] = asc;
+  const mapFn = r => {
+    if (tableKey === 'inv') return Object.values({partNo:r.partNo, description:r.description, bin:r.bin, qty:r.qty, unitCost:r.unitCost, abc:r.abc, freq:r.freq, lastCounted:r.lastCounted, nextDue:r.nextDue, status:r.status})[colIdx];
+    if (tableKey === 'sch') return Object.values({partNo:r.partNo, bin:r.bin, abc:r.abc, freq:r.freq, lastCounted:r.lastCounted, nextDue:r.nextDue, daysUntilDue:r.daysUntilDue})[colIdx];
+    if (tableKey === 'pid') return Object.values({piDoc:r.piDoc, partNo:r.partNo, description:r.description, bin:r.bin, abc:r.abc, bookQty:r.bookQty, countQty:r.countQty, variance:r.variance})[colIdx];
+    return '';
+  };
+  const compare = (a,b) => {
+    const av = mapFn(a), bv = mapFn(b);
+    if (av === null || av === undefined) return 1;
+    if (bv === null || bv === undefined) return -1;
+    if (typeof av === 'number' && typeof bv === 'number') return asc ? av-bv : bv-av;
+    if (av instanceof Date && bv instanceof Date) return asc ? av-bv : bv-av;
+    return asc ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+  };
+  if (tableKey === 'inv') { invData.sort(compare); filterInventory(); }
+  if (tableKey === 'sch') { schData.sort(compare); filterSchedule(); }
+  if (tableKey === 'pid') { pidData.sort(compare); filterPID(); }
+}
+
+// ═══════════════════════════════════════════════════════════
+//  EXPORTS
+// ═══════════════════════════════════════════════════════════
+function exportCSV(rows, filename) {
+  if (!rows.length) { alert('No data to export.'); return; }
+  const headers = Object.keys(rows[0]);
+  const csv = [headers.join(','), ...rows.map(r => headers.map(h => `"${String(r[h]||'').replace(/"/g,'""')}"`).join(','))].join('\n');
+  const a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = filename;
+  a.click();
+}
+
+function exportInventoryCSV() {
+  exportCSV(invData.map(r => ({
+    PartNo: r.partNo, Description: r.description, Bin: r.bin, Qty: r.qty,
+    UnitCost: r.unitCost.toFixed(2), ABC: r.abc, Frequency: r.freq,
+    LastCounted: r.lastCounted ? fmtDate(r.lastCounted) : '',
+    NextDue: r.nextDue ? fmtDate(r.nextDue) : '', Status: r.status
+  })), 'inventory_abc_' + fmtDateFile(TODAY) + '.csv');
+}
+
+function exportScheduleCSV() {
+  exportCSV(schData.map(r => ({
+    PartNo: r.partNo, Bin: r.bin, ABC: r.abc, Frequency: r.freq,
+    LastCounted: r.lastCounted ? fmtDate(r.lastCounted) : 'Never',
+    NextDue: r.nextDue ? fmtDate(r.nextDue) : '',
+    DaysUntilDue: r.daysUntilDue, Status: r.schedStatus
+  })), 'count_schedule_' + fmtDateFile(TODAY) + '.csv');
+}
+
+function exportPIDCSV() {
+  exportCSV(pidData.map(r => ({
+    PIDoc: r.piDoc, PartNo: r.partNo, Description: r.description,
+    Bin: r.bin, ABC: r.abc, BookQty: r.bookQty, CountQty: r.countQty,
+    Variance: r.variance, CountDate: r.countDate ? fmtDate(r.countDate) : r.countDateRaw
+  })), 'pid_results_' + fmtDateFile(TODAY) + '.csv');
+}
+
+// ═══════════════════════════════════════════════════════════
+//  CLEAR
+// ═══════════════════════════════════════════════════════════
+function clearAllData() {
+  if (!confirm('Clear all loaded data?')) return;
+  ['cost','inventory','pid'].forEach(k => {
+    state.rawHeaders[k] = []; state.rawRows[k] = []; state.colMaps[k] = {};
+  });
+  state.processed = { inventory: [], schedule: [], pid: [] };
+  invData = []; schData = []; pidData = [];
+  // Reset UI
+  ['zone-cost','zone-inv','zone-pid'].forEach(id => document.getElementById(id).classList.remove('loaded'));
+  ['status-cost','status-inv','status-pid'].forEach(id => {
+    const el = document.getElementById(id); el.className='upload-status waiting'; el.textContent='Awaiting file…';
+  });
+  // Reset bin dropdowns
+  ['inv-bin','sch-bin','pid-bin'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) { el.innerHTML='<option value="">All Bins</option>'; }
+  });
+  document.getElementById('mapping-section').style.display='none';
+  document.getElementById('preview-section').style.display='none';
+  document.getElementById('scope-section').style.display='none';
+  document.getElementById('preview-panels').innerHTML='';
+  document.getElementById('scope-grid').innerHTML='<div class="scope-empty">Upload inventory data to populate bins.</div>';
+  // Reset scope toggles
+  ['inv','sch','pid','dash'].forEach(t => {
+    state.scopeActive[t] = false;
+    const tog = document.getElementById(`${t}-scope-toggle`);
+    if (tog) tog.classList.remove('active');
+  });
+  document.getElementById('dash-no-data').style.display='';
+  document.getElementById('inv-tbody').innerHTML=`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📦</div><div class="empty-title">No inventory loaded</div></div></td></tr>`;
+  document.getElementById('sch-tbody').innerHTML=`<tr><td colspan="8"><div class="empty-state"><div class="empty-icon">📅</div><div class="empty-title">No schedule generated</div></div></td></tr>`;
+  document.getElementById('pid-tbody').innerHTML=`<tr><td colspan="10"><div class="empty-state"><div class="empty-icon">📋</div><div class="empty-title">No PID data loaded</div></div></td></tr>`;
+  ['kpi-total','kpi-counted','kpi-remaining','kpi-overdue','kpi-counted-pct',
+   'sch-hvc','sch-a','sch-b','pid-docs','pid-lines','pid-var','pid-acc'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.textContent='—';
+  });
+  document.getElementById('donut-pct').textContent='0%';
+  document.getElementById('donut-fill').setAttribute('stroke-dasharray','0 100');
+  document.getElementById('donut-legend').innerHTML='<div class="empty-state" style="padding:20px 0;"><div class="empty-sub">No data loaded</div></div>';
+  document.getElementById('abc-breakdown-list').innerHTML='<div class="empty-state"><div class="empty-icon">📊</div><div class="empty-sub">Upload data to see breakdown</div></div>';
+  document.getElementById('dash-overdue-list').innerHTML='<div class="empty-state"><div class="empty-icon">✅</div><div class="empty-title">Nothing overdue</div></div>';
+}
+
+// ═══════════════════════════════════════════════════════════
+//  BIN SCOPE MANAGER
+// ═══════════════════════════════════════════════════════════
+
+// Load saved scope from localStorage on boot
+function loadSavedScope() {
+  try {
+    const saved = localStorage.getItem('ceva_scope_bins');
+    if (saved) {
+      const arr = JSON.parse(saved);
+      state.scopeBins = new Set(arr);
+      const label = document.getElementById('scope-saved-label');
+      if (label) label.textContent = `Last saved: ${arr.length} bins`;
+    }
+  } catch(e) { /* ignore */ }
+}
+
+function saveScope() {
+  try {
+    const arr = [...state.scopeBins];
+    localStorage.setItem('ceva_scope_bins', JSON.stringify(arr));
+    const label = document.getElementById('scope-saved-label');
+    label.textContent = `✓ Saved — ${arr.length} bins`;
+    setTimeout(() => { label.textContent = `${arr.length} bins in scope`; }, 2500);
+    updateScopeBadge();
+    // Re-filter all tabs that have scope active
+    if (state.scopeActive.inv) filterInventory();
+    if (state.scopeActive.sch) filterSchedule();
+    if (state.scopeActive.pid) filterPID();
+    if (state.scopeActive.dash) updateDashboard();
+  } catch(e) {
+    alert('Could not save scope to browser storage.');
+  }
+}
+
+function populateScopeManager(bins) {
+  // bins from inventory. Pre-check any that match saved scope, otherwise check all if scope is empty.
+  if (state.scopeBins.size === 0) {
+    bins.forEach(b => state.scopeBins.add(b));
+  }
+  document.getElementById('scope-section').style.display = 'block';
+  renderScopeGrid();
+  updateScopeBadge();
+}
+
+function renderScopeGrid() {
+  const search = (document.getElementById('scope-search').value || '').toLowerCase();
+  const allBins = [...new Set(invData.map(r => r.bin).filter(Boolean))].sort();
+  const filtered = search ? allBins.filter(b => b.toLowerCase().includes(search)) : allBins;
+
+  // Build ABC type map for badge display
+  const binTypeMap = {};
+  invData.forEach(r => { if (r.bin) binTypeMap[r.bin] = r.abc; });
+
+  const grid = document.getElementById('scope-grid');
+  if (!filtered.length) {
+    grid.innerHTML = '<div class="scope-empty">No bins match your search.</div>';
+    return;
+  }
+
+  grid.innerHTML = filtered.map(bin => {
+    const checked = state.scopeBins.has(bin);
+    const abc = binTypeMap[bin] || '';
+    return `<label class="scope-item ${checked ? 'checked' : ''}" id="scope-item-${CSS.escape(bin)}">
+      <input type="checkbox" ${checked ? 'checked' : ''} onchange="toggleBin('${bin.replace(/'/g,"\\'")}', this.checked)">
+      <span class="scope-item-label" title="${bin}">${bin}</span>
+      ${abc ? `<span class="scope-item-type badge badge-${abc}">${abc}</span>` : ''}
+    </label>`;
+  }).join('');
+}
+
+function toggleBin(bin, checked) {
+  if (checked) state.scopeBins.add(bin);
+  else state.scopeBins.delete(bin);
+  // Update item styling immediately
+  const item = document.querySelector(`#scope-grid input[type=checkbox][onchange*="${bin.replace(/'/g,"\\'")}"]`)?.closest('.scope-item');
+  if (item) item.classList.toggle('checked', checked);
+  updateScopeBadge();
+}
+
+function updateScopeBadge() {
+  const badge = document.getElementById('scope-count-badge');
+  if (badge) badge.textContent = `${state.scopeBins.size} selected`;
+}
+
+function scopeSelectAll() {
+  const search = (document.getElementById('scope-search').value || '').toLowerCase();
+  const allBins = [...new Set(invData.map(r => r.bin).filter(Boolean))];
+  const targets = search ? allBins.filter(b => b.toLowerCase().includes(search)) : allBins;
+  targets.forEach(b => state.scopeBins.add(b));
+  renderScopeGrid();
+  updateScopeBadge();
+}
+
+function scopeDeselectAll() {
+  const search = (document.getElementById('scope-search').value || '').toLowerCase();
+  const allBins = [...new Set(invData.map(r => r.bin).filter(Boolean))];
+  const targets = search ? allBins.filter(b => b.toLowerCase().includes(search)) : allBins;
+  targets.forEach(b => state.scopeBins.delete(b));
+  renderScopeGrid();
+  updateScopeBadge();
+}
+
+function toggleScopeFilter(tab) {
+  state.scopeActive[tab] = !state.scopeActive[tab];
+  const toggle = document.getElementById(`${tab}-scope-toggle`);
+  if (toggle) toggle.classList.toggle('active', state.scopeActive[tab]);
+  if (tab === 'inv') filterInventory();
+  if (tab === 'sch') filterSchedule();
+  if (tab === 'pid') filterPID();
+  if (tab === 'dash') updateDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  HELPERS
+// ═══════════════════════════════════════════════════════════
+function parseDate(val) {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  // Excel serial number
+  const num = Number(val);
+  if (!isNaN(num) && num > 40000) {
+    const d = new Date((num - 25569) * 86400 * 1000);
+    return d;
+  }
+  // String
+  const d = new Date(val);
+  if (!isNaN(d.getTime())) return d;
+  // MM/DD/YYYY
+  const parts = String(val).split(/[\/\-\.]/);
+  if (parts.length === 3) {
+    return new Date(`${parts[2]}-${parts[0].padStart(2,'0')}-${parts[1].padStart(2,'0')}`);
+  }
+  return null;
+}
+
+function fmtDate(d) {
+  if (!d) return '—';
+  return d.toLocaleDateString('en-US', { month:'2-digit', day:'2-digit', year:'numeric' });
+}
+
+function fmtDateFile(d) {
+  return d.toISOString().slice(0,10);
+}
+
+function capitalize(s) {
+  return s.charAt(0).toUpperCase() + s.slice(1);
+}
+</script>
+</body>
+</html>
