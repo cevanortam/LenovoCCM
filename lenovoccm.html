@@ -580,6 +580,104 @@
   .scope-toggle-label { font-size: 12px; font-weight: 500; color: var(--text2); }
   .scope-toggle-wrap.active .scope-toggle-label { color: var(--accent); }
 
+  /* ── SNAPSHOT / ARCHIVE ── */
+  .snapshot-panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+  }
+  .snapshot-toolbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 14px 18px;
+    background: var(--surface2);
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+  }
+  .snapshot-name-input {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 7px 12px;
+    font-family: 'IBM Plex Sans', sans-serif;
+    font-size: 13px;
+    color: var(--text);
+    outline: none;
+    flex: 1;
+    min-width: 220px;
+    transition: border-color 0.15s;
+  }
+  .snapshot-name-input:focus { border-color: var(--accent); }
+  .snapshot-name-input::placeholder { color: var(--text3); }
+  .snapshot-list {
+    max-height: 280px;
+    overflow-y: auto;
+  }
+  .snapshot-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 18px;
+    border-bottom: 1px solid var(--border);
+    transition: background 0.1s;
+  }
+  .snapshot-row:last-child { border-bottom: none; }
+  .snapshot-row:hover { background: var(--surface2); }
+  .snapshot-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  .snapshot-info { flex: 1; min-width: 0; }
+  .snapshot-name {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .snapshot-meta {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: 'IBM Plex Mono', monospace;
+    margin-top: 2px;
+  }
+  .snapshot-actions { display: flex; gap: 6px; flex-shrink: 0; }
+  .btn-xs {
+    padding: 4px 10px;
+    border-radius: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text2);
+    transition: all 0.12s;
+    font-family: 'IBM Plex Sans', sans-serif;
+  }
+  .btn-xs:hover { border-color: var(--accent); color: var(--accent); background: #eff6ff; }
+  .btn-xs.danger:hover { border-color: var(--red); color: var(--red); background: #fff5f5; }
+  .snapshot-empty {
+    text-align: center;
+    padding: 32px 20px;
+    color: var(--text3);
+    font-size: 13px;
+  }
+  .autosave-dot {
+    width: 7px; height: 7px;
+    border-radius: 50%;
+    background: var(--green);
+    display: inline-block;
+    margin-right: 5px;
+    animation: pulse-dot 2s infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
   /* ── EMPTY STATE ── */
   .empty-state {
     text-align: center;
@@ -706,7 +804,10 @@
       <div class="header-sub">Lenovo / CEVA Logistics · Whitsett, NC</div>
     </div>
   </div>
-  <div class="header-date" id="headerDate"></div>
+  <div style="display:flex;align-items:center;gap:16px;">
+    <div style="font-size:12px;color:var(--text3);" id="header-autosave"></div>
+    <div class="header-date" id="headerDate"></div>
+  </div>
 </header>
 
 <!-- NAV -->
@@ -849,6 +950,30 @@
       <div class="upload-title">Physical Inventory Docs</div>
       <div class="upload-sub">Completed PI documents<br>from SAP EWM</div>
       <span class="upload-status waiting" id="status-pid">Awaiting file…</span>
+    </div>
+  </div>
+
+  <!-- Snapshots & Archive -->
+  <div class="divider"></div>
+  <div class="section-header">
+    <div>
+      <div class="section-title">Snapshots &amp; Archive</div>
+      <div class="section-sub">Save named snapshots to this browser, restore previous states, or export to XLSX for permanent records.</div>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;">
+      <span style="font-size:12px;color:var(--text3);" id="autosave-status"></span>
+      <button class="btn btn-ghost" onclick="exportArchiveXLSX()" id="btn-export-xlsx" disabled>📥 Export XLSX Archive</button>
+    </div>
+  </div>
+  <div class="snapshot-panel">
+    <div class="snapshot-toolbar">
+      <input class="snapshot-name-input" id="snapshot-name-input" placeholder="Snapshot name, e.g. Lenovo NC — April 2026…" maxlength="80">
+      <button class="btn btn-primary" onclick="saveSnapshot()" id="btn-save-snapshot" disabled>💾 Save Snapshot</button>
+      <button class="btn btn-ghost" onclick="clearAllSnapshots()" style="font-size:12px;">🗑 Clear All Snapshots</button>
+      <span style="font-size:11px;color:var(--text3);font-family:'IBM Plex Mono',monospace;" id="storage-size-label"></span>
+    </div>
+    <div class="snapshot-list" id="snapshot-list">
+      <div class="snapshot-empty">No snapshots saved yet. Load data and click Save Snapshot.</div>
     </div>
   </div>
 
@@ -1166,6 +1291,37 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('headerDate').textContent = TODAY.toLocaleDateString('en-US', { weekday:'short', year:'numeric', month:'short', day:'numeric' });
 
   loadSavedScope();
+  renderSnapshotList();
+  updateStorageSizeLabel();
+
+  // Attempt to restore autosave on first load
+  if (loadAutoSave()) {
+    // Rebuild schedule
+    state.processed.schedule = state.processed.inventory.map(r => {
+      const daysUntilDue = r.nextDue ? Math.ceil((r.nextDue - TODAY) / 86400000) : -999;
+      let schedStatus = 'pending';
+      if (r.status === 'counted') schedStatus = 'counted';
+      else if (daysUntilDue < 0) schedStatus = 'overdue';
+      else if (daysUntilDue <= 7) schedStatus = 'due-soon';
+      return { ...r, daysUntilDue, schedStatus };
+    });
+    renderInventoryTable(state.processed.inventory);
+    renderScheduleTable(state.processed.schedule);
+    renderPIDTable(state.processed.pid);
+    updateScheduleKPIs();
+    updatePIDKPIs();
+    updateDashboard();
+    document.getElementById('dash-no-data').style.display = 'none';
+    enableSnapshotControls();
+    ['zone-cost','zone-inv','zone-pid'].forEach(id => document.getElementById(id).classList.add('loaded'));
+    ['status-cost','status-inv','status-pid'].forEach(id => {
+      const el = document.getElementById(id);
+      el.className = 'upload-status ok';
+      el.textContent = `✓ Session auto-restored`;
+    });
+    const el = document.getElementById('header-autosave');
+    if (el) el.innerHTML = `<span class="autosave-dot"></span>Session restored`;
+  }
 
   // NAV
   document.querySelectorAll('.nav-tab').forEach(t => {
@@ -1380,6 +1536,8 @@ function autoProcess() {
   buildPID();
   updateDashboard();
   document.getElementById('dash-no-data').style.display = 'none';
+  autoSave();
+  enableSnapshotControls();
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -1930,6 +2088,14 @@ function clearAllData() {
     const el = document.getElementById(id);
     if (el) { el.innerHTML='<option value="">All Bins</option>'; }
   });
+  // Clear autosave
+  try { localStorage.removeItem(AUTOSAVE_KEY); } catch(e) {}
+  const saveBtn = document.getElementById('btn-save-snapshot');
+  const xlsxBtn = document.getElementById('btn-export-xlsx');
+  if (saveBtn) saveBtn.disabled = true;
+  if (xlsxBtn) xlsxBtn.disabled = true;
+  const headerAS = document.getElementById('header-autosave');
+  if (headerAS) headerAS.innerHTML = '';
   document.getElementById('mapping-section').style.display='none';
   document.getElementById('preview-section').style.display='none';
   document.getElementById('scope-section').style.display='none';
@@ -2067,6 +2233,319 @@ function toggleScopeFilter(tab) {
   if (tab === 'sch') filterSchedule();
   if (tab === 'pid') filterPID();
   if (tab === 'dash') updateDashboard();
+}
+
+// ═══════════════════════════════════════════════════════════
+//  SNAPSHOT / ARCHIVE SYSTEM
+// ═══════════════════════════════════════════════════════════
+const SNAPSHOT_KEY = 'ceva_cc_snapshots';
+const AUTOSAVE_KEY = 'ceva_cc_autosave';
+
+function serializeState() {
+  // Store ONLY processed/classified rows — NOT raw file data which can be hundreds of KB
+  return {
+    ts: Date.now(),
+    // Store col maps so re-upload can auto-map columns again (tiny)
+    colMaps: state.colMaps,
+    scopeBins: [...state.scopeBins],
+    // Processed inventory: slim down to only the fields we need for display/restore
+    processedInventory: state.processed.inventory.map(r => ({
+      partNo: r.partNo,
+      description: r.description,
+      bin: r.bin,
+      qty: r.qty,
+      unitCost: r.unitCost,
+      abc: r.abc,
+      freq: r.freq,
+      freqDays: r.freqDays,
+      lastCounted: r.lastCounted ? r.lastCounted.getTime() : null,
+      nextDue: r.nextDue ? r.nextDue.getTime() : null,
+      status: r.status
+    })),
+    // Processed PID: slim fields only
+    processedPID: state.processed.pid.map(r => ({
+      piDoc: r.piDoc,
+      piStatus: r.piStatus,
+      partNo: r.partNo,
+      description: r.description,
+      bin: r.bin,
+      abc: r.abc,
+      bookQty: r.bookQty,
+      countQty: r.countQty,
+      variance: r.variance,
+      countDate: r.countDate ? r.countDate.getTime() : null,
+      countDateRaw: r.countDateRaw
+    }))
+  };
+}
+
+function deserializeState(snap) {
+  // rawRows are not stored — they will be empty until user re-uploads files
+  state.rawRows = { cost:[], inventory:[], pid:[] };
+  state.rawHeaders = { cost:[], inventory:[], pid:[] };
+  state.colMaps = snap.colMaps || { cost:{}, inventory:{}, pid:{} };
+  state.scopeBins = new Set(snap.scopeBins || []);
+
+  // Rehydrate dates
+  state.processed.inventory = (snap.processedInventory || []).map(r => ({
+    ...r,
+    lastCounted: r.lastCounted ? new Date(r.lastCounted) : null,
+    nextDue: r.nextDue ? new Date(r.nextDue) : null
+  }));
+  state.processed.pid = (snap.processedPID || []).map(r => ({
+    ...r,
+    countDate: r.countDate ? new Date(r.countDate) : null
+  }));
+}
+
+function autoSave() {
+  if (!state.processed.inventory.length) return;
+  try {
+    const data = serializeState();
+    localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(data));
+    const now = new Date().toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+    const el = document.getElementById('header-autosave');
+    if (el) el.innerHTML = `<span class="autosave-dot"></span>Auto-saved ${now}`;
+  } catch(e) { console.warn('Auto-save failed:', e); }
+}
+
+function loadAutoSave() {
+  try {
+    const raw = localStorage.getItem(AUTOSAVE_KEY);
+    if (!raw) return false;
+    const snap = JSON.parse(raw);
+    if (!snap.processedInventory?.length) return false;
+    deserializeState(snap);
+    return true;
+  } catch(e) { return false; }
+}
+
+function saveSnapshot() {
+  if (!state.processed.inventory.length) { alert('No data loaded to snapshot.'); return; }
+  const nameInput = document.getElementById('snapshot-name-input');
+  const name = nameInput.value.trim() || `Snapshot — ${new Date().toLocaleDateString('en-US', {month:'short', day:'numeric', year:'numeric'})}`;
+  try {
+    const snapshots = loadSnapshotList();
+    const id = 'snap_' + Date.now();
+    snapshots.unshift({
+      id, name,
+      ts: Date.now(),
+      skus: state.processed.inventory.length,
+      counted: state.processed.inventory.filter(r => r.status === 'counted').length,
+      data: serializeState()
+    });
+    // Keep max 20 snapshots
+    if (snapshots.length > 20) snapshots.length = 20;
+    localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(snapshots));
+    nameInput.value = '';
+    renderSnapshotList();
+    updateStorageSizeLabel();
+    // Flash feedback
+    const btn = document.getElementById('btn-save-snapshot');
+    const orig = btn.textContent;
+    btn.textContent = '✓ Saved!';
+    btn.style.background = 'var(--green)';
+    setTimeout(() => { btn.textContent = orig; btn.style.background = ''; }, 2000);
+  } catch(e) {
+    alert('Could not save snapshot. Browser storage may be full.');
+    console.error(e);
+  }
+}
+
+function clearAllSnapshots() {
+  const snapshots = loadSnapshotList();
+  if (!snapshots.length) { alert('No snapshots to clear.'); return; }
+  if (!confirm(`Delete all ${snapshots.length} saved snapshots? This cannot be undone.`)) return;
+  try { localStorage.removeItem(SNAPSHOT_KEY); } catch(e) {}
+  renderSnapshotList();
+  updateStorageSizeLabel();
+}
+
+function updateStorageSizeLabel() {
+  try {
+    const snapRaw = localStorage.getItem(SNAPSHOT_KEY) || '';
+    const autoRaw = localStorage.getItem(AUTOSAVE_KEY) || '';
+    const bytes = (snapRaw.length + autoRaw.length) * 2; // UTF-16
+    const kb = (bytes / 1024).toFixed(1);
+    const label = document.getElementById('storage-size-label');
+    if (label) label.textContent = `~${kb} KB used`;
+  } catch(e) {}
+}
+
+function loadSnapshotList() {
+  try {
+    const raw = localStorage.getItem(SNAPSHOT_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch(e) { return []; }
+}
+
+function renderSnapshotList() {
+  const list = document.getElementById('snapshot-list');
+  if (!list) return;
+  const snapshots = loadSnapshotList();
+  if (!snapshots.length) {
+    list.innerHTML = '<div class="snapshot-empty">No snapshots saved yet. Load data and click Save Snapshot.</div>';
+    updateStorageSizeLabel();
+    return;
+  }
+  list.innerHTML = snapshots.map(s => {
+    const d = new Date(s.ts);
+    const dateStr = d.toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+    const timeStr = d.toLocaleTimeString('en-US', { hour:'2-digit', minute:'2-digit' });
+    const pct = s.skus ? Math.round(s.counted / s.skus * 100) : 0;
+    return `<div class="snapshot-row">
+      <div class="snapshot-icon">📸</div>
+      <div class="snapshot-info">
+        <div class="snapshot-name">${s.name}</div>
+        <div class="snapshot-meta">${dateStr} at ${timeStr} &nbsp;·&nbsp; ${s.skus} SKUs &nbsp;·&nbsp; ${pct}% counted</div>
+      </div>
+      <div class="snapshot-actions">
+        <button class="btn-xs" onclick="restoreSnapshot('${s.id}')">↩ Restore</button>
+        <button class="btn-xs" onclick="exportSnapshotXLSX('${s.id}')">📥 XLSX</button>
+        <button class="btn-xs danger" onclick="deleteSnapshot('${s.id}')">✕</button>
+      </div>
+    </div>`;
+  }).join('');
+  updateStorageSizeLabel();
+}
+
+function restoreSnapshot(id) {
+  const snapshots = loadSnapshotList();
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap) { alert('Snapshot not found.'); return; }
+  if (!confirm(`Restore snapshot "${snap.name}"? Current unsaved data will be replaced.`)) return;
+  deserializeState(snap.data);
+  // Rebuild schedule from restored inventory
+  state.processed.schedule = state.processed.inventory.map(r => {
+    const daysUntilDue = r.nextDue ? Math.ceil((r.nextDue - TODAY) / 86400000) : -999;
+    let schedStatus = 'pending';
+    if (r.status === 'counted') schedStatus = 'counted';
+    else if (daysUntilDue < 0) schedStatus = 'overdue';
+    else if (daysUntilDue <= 7) schedStatus = 'due-soon';
+    return { ...r, daysUntilDue, schedStatus };
+  });
+  // Restore UI
+  renderInventoryTable(state.processed.inventory);
+  renderScheduleTable(state.processed.schedule);
+  renderPIDTable(state.processed.pid);
+  updateScheduleKPIs();
+  updatePIDKPIs();
+  updateDashboard();
+  document.getElementById('dash-no-data').style.display = 'none';
+  enableSnapshotControls();
+  // Show restored indicator on upload zones
+  const d = new Date(snap.ts).toLocaleDateString('en-US', { month:'short', day:'numeric', year:'numeric' });
+  ['zone-cost','zone-inv','zone-pid'].forEach(id => document.getElementById(id).classList.add('loaded'));
+  ['status-cost','status-inv','status-pid'].forEach(id => {
+    const el = document.getElementById(id);
+    el.className = 'upload-status ok';
+    el.textContent = `✓ Restored from "${snap.name}" (${d})`;
+  });
+  // Navigate to dashboard
+  document.querySelectorAll('.nav-tab').forEach(x => x.classList.remove('active'));
+  document.querySelectorAll('.page').forEach(x => x.classList.remove('active'));
+  document.querySelector('[data-page="dashboard"]').classList.add('active');
+  document.getElementById('page-dashboard').classList.add('active');
+}
+
+function deleteSnapshot(id) {
+  const snapshots = loadSnapshotList();
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap) return;
+  if (!confirm(`Delete snapshot "${snap.name}"?`)) return;
+  const updated = snapshots.filter(s => s.id !== id);
+  localStorage.setItem(SNAPSHOT_KEY, JSON.stringify(updated));
+  renderSnapshotList();
+  updateStorageSizeLabel();
+}
+
+function enableSnapshotControls() {
+  const btn = document.getElementById('btn-save-snapshot');
+  const xlsxBtn = document.getElementById('btn-export-xlsx');
+  if (btn) btn.disabled = false;
+  if (xlsxBtn) xlsxBtn.disabled = false;
+}
+
+function exportArchiveXLSX() {
+  exportSnapshotXLSXData(state.processed.inventory, state.processed.pid, 'Lenovo NC - Cycle Count Archive - ' + fmtDateFile(TODAY));
+}
+
+function exportSnapshotXLSX(id) {
+  const snapshots = loadSnapshotList();
+  const snap = snapshots.find(s => s.id === id);
+  if (!snap) return;
+  const inv = (snap.data.processedInventory || []).map(r => ({
+    ...r,
+    lastCounted: r.lastCounted ? new Date(r.lastCounted) : null,
+    nextDue: r.nextDue ? new Date(r.nextDue) : null
+  }));
+  const pid = (snap.data.processedPID || []).map(r => ({
+    ...r,
+    countDate: r.countDate ? new Date(r.countDate) : null
+  }));
+  exportSnapshotXLSXData(inv, pid, snap.name.replace(/[\\/:*?"<>|]/g, '-'));
+}
+
+function exportSnapshotXLSXData(inv, pid, filename) {
+  if (!inv.length) { alert('No inventory data to export.'); return; }
+  const wb = XLSX.utils.book_new();
+
+  // Sheet 1: Inventory + ABC
+  const invRows = inv.map(r => ({
+    'Part No': r.partNo, 'Description': r.description, 'Bin': r.bin,
+    'Qty': r.qty, 'Unit Cost': r.unitCost,
+    'ABC Class': r.abc, 'Frequency': r.freq,
+    'Last Counted': r.lastCounted ? fmtDate(r.lastCounted) : 'Never',
+    'Next Due': r.nextDue ? fmtDate(r.nextDue) : '',
+    'Status': r.status
+  }));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(invRows), 'Inventory & ABC');
+
+  // Sheet 2: Count Schedule
+  const schRows = inv.map(r => {
+    const daysUntilDue = r.nextDue ? Math.ceil((r.nextDue - TODAY) / 86400000) : null;
+    return {
+      'Part No': r.partNo, 'Bin': r.bin, 'ABC Class': r.abc, 'Frequency': r.freq,
+      'Last Counted': r.lastCounted ? fmtDate(r.lastCounted) : 'Never',
+      'Next Due': r.nextDue ? fmtDate(r.nextDue) : '',
+      'Days Until Due': daysUntilDue,
+      'Status': r.status
+    };
+  }).sort((a,b) => (a['Days Until Due'] ?? 999) - (b['Days Until Due'] ?? 999));
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(schRows), 'Count Schedule');
+
+  // Sheet 3: PID Results (if any)
+  if (pid.length) {
+    const pidRows = pid.map(r => ({
+      'PI Doc': r.piDoc, 'PI Status': r.piStatus, 'Part No': r.partNo,
+      'Description': r.description, 'Bin': r.bin, 'ABC Class': r.abc,
+      'Book Qty': r.bookQty, 'Count Qty': r.countQty, 'Variance': r.variance,
+      'Count Date': r.countDate ? fmtDate(r.countDate) : r.countDateRaw || ''
+    }));
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(pidRows), 'PID Results');
+  }
+
+  // Sheet 4: Summary
+  const counted = inv.filter(r => r.status === 'counted').length;
+  const overdue = inv.filter(r => r.status === 'overdue').length;
+  const types = ['HVC','A','B','C'];
+  const summaryRows = [
+    { 'Metric': 'Export Date', 'Value': new Date().toLocaleDateString() },
+    { 'Metric': 'Total SKUs', 'Value': inv.length },
+    { 'Metric': 'Counted', 'Value': counted },
+    { 'Metric': 'Remaining', 'Value': inv.length - counted },
+    { 'Metric': 'Overdue', 'Value': overdue },
+    { 'Metric': 'Completion %', 'Value': inv.length ? (counted / inv.length * 100).toFixed(1) + '%' : '0%' },
+    { 'Metric': '', 'Value': '' },
+    ...types.map(t => {
+      const tItems = inv.filter(r => r.abc === t);
+      const tCounted = tItems.filter(r => r.status === 'counted').length;
+      return { 'Metric': `${t} Parts`, 'Value': `${tCounted} / ${tItems.length} counted` };
+    })
+  ];
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(summaryRows), 'Summary');
+
+  XLSX.writeFile(wb, filename + '.xlsx');
 }
 
 // ═══════════════════════════════════════════════════════════
